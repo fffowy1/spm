@@ -2,10 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
-  signInWithEmailAndPassword, // ใช้สำหรับการ Login Admin จริง
   signInAnonymously, 
   onAuthStateChanged, 
-  signOut
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -17,7 +15,6 @@ import {
   serverTimestamp,
   writeBatch
 } from 'firebase/firestore';
-// Import Realtime Database for Migration
 import { getDatabase, ref, get } from 'firebase/database';
 
 import { 
@@ -33,9 +30,11 @@ import {
   Activity,
   Database,
   RefreshCw,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 
-// --- 1. FIREBASE CONFIGURATION (ของจริงจากไฟล์ที่คุณอัปโหลด) ---
+// --- 1. FIREBASE CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyCInlbfpvwIMKKWwM4cttN55aWnm2h5dhM",
   authDomain: "shu-football.firebaseapp.com",
@@ -47,12 +46,10 @@ const firebaseConfig = {
   measurementId: "G-BRLS5XSHYQ"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// --- 2. Collection Names (Path ปกติสำหรับการใช้งานจริง) ---
 const COLLECTIONS = {
   TEAMS: 'teams',
   MATCHES: 'matches',
@@ -72,19 +69,13 @@ const Login = ({ onLogin, onCancel }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
     try {
-       // วิธีที่ 1: แบบง่าย (Password Simulation) - ใช้แบบนี้ไปก่อนได้ครับ
        if (password === 'admin1234' || email.toLowerCase() === 'admin') {
-          onLogin(true); // Success
+          onLogin(true);
        } else {
-          // วิธีที่ 2: ถ้าอนาคตอยากใช้ Firebase Auth จริงๆ ให้เปิดบรรทัดล่างนี้
-          // await signInWithEmailAndPassword(auth, email, password);
-          // onLogin(true);
           setError('รหัสผ่านไม่ถูกต้อง (ลองใช้: admin1234)');
        }
     } catch (err) {
-      console.error(err);
       setError('เกิดข้อผิดพลาดในการเข้าสู่ระบบ');
     } finally {
       setLoading(false);
@@ -95,87 +86,75 @@ const Login = ({ onLogin, onCancel }) => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4 font-chakra">
       <div className="bg-white/10 backdrop-blur-lg border border-white/20 p-8 rounded-2xl shadow-2xl w-full max-w-md text-white">
         <div className="flex justify-center mb-6">
-          <div className="p-3 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50">
-            <Shield className="w-8 h-8 text-white" />
-          </div>
+            <div className="p-3 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50"><Shield className="w-8 h-8 text-white" /></div>
         </div>
         <h2 className="text-2xl font-bold text-center mb-6">Admin Login</h2>
         <form onSubmit={handleLogin} className="space-y-4">
-          <input 
-            type="text" 
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-slate-800/50 border border-slate-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition text-white placeholder-gray-400"
-            placeholder="Admin ID (admin)"
-          />
-          <input 
-            type="password" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-slate-800/50 border border-slate-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition text-white placeholder-gray-400"
-            placeholder="Password"
-          />
+          <input type="text" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-slate-800/50 border border-slate-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition text-white" placeholder="Admin ID (admin)" />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-800/50 border border-slate-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition text-white" placeholder="Password" />
           {error && <p className="text-red-400 text-sm text-center bg-red-900/20 py-2 rounded">{error}</p>}
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 rounded-lg shadow-lg transform transition hover:scale-[1.02] active:scale-95"
-          >
-            {loading ? 'กำลังตรวจสอบ...' : 'เข้าสู่ระบบ'}
+          <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 rounded-lg shadow-lg transform transition hover:scale-[1.02] active:scale-95 flex justify-center items-center gap-2">
+            {loading && <Loader2 className="animate-spin" size={18}/>} {loading ? 'กำลังตรวจสอบ...' : 'เข้าสู่ระบบ'}
           </button>
         </form>
-        <button onClick={onCancel} className="w-full mt-4 text-gray-400 hover:text-white text-sm">
-          กลับไปหน้าหลัก
-        </button>
+        <button onClick={onCancel} className="w-full mt-4 text-gray-400 hover:text-white text-sm">กลับไปหน้าหลัก</button>
       </div>
     </div>
   );
 };
 
+// Loading Spinner Component (Local)
+const LoadingState = () => (
+    <div className="flex flex-col items-center justify-center py-20 text-gray-400 animate-pulse">
+        <Loader2 className="w-10 h-10 animate-spin mb-3 text-blue-500" />
+        <p>กำลังโหลดข้อมูล...</p>
+    </div>
+);
+
 // Main App Component
 export default function App() {
   const [user, setUser] = useState(null);
-  const [isAdminMode, setIsAdminMode] = useState(false); // Client-side admin toggle
+  const [isAdminMode, setIsAdminMode] = useState(false);
   const [activeTab, setActiveTab] = useState('table');
   const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
-  const [settings, setSettings] = useState({ leagueName: 'Loading...', logoUrl: '', footerText: '' });
+  const [settings, setSettings] = useState({ leagueName: 'League Manager', logoUrl: '', footerText: '' });
   const [visitorStats, setVisitorStats] = useState({ today: 0, month: 0, year: 0 });
-  const [loading, setLoading] = useState(true);
+  
+  const [isTeamsLoading, setIsTeamsLoading] = useState(true);
+  const [isMatchesLoading, setIsMatchesLoading] = useState(true);
 
-  // Auth & Data Fetching
+  // Auth
   useEffect(() => {
-    // Login Anonymously for everyone (Viewers)
     signInAnonymously(auth).catch(console.error);
-
-    const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
-        setUser(u);
-    });
-    return () => unsubscribeAuth();
+    return onAuthStateChanged(auth, (u) => setUser(u));
   }, []);
 
+  // Data Fetching
   useEffect(() => {
-    // Listeners (Firestore)
-    // Note: Using simple collection names now
-    const unsubSettings = onSnapshot(collection(db, COLLECTIONS.SETTINGS), (snap) => {
-        if (!snap.empty) setSettings(snap.docs[0].data());
-        else {
-             // If empty, don't crash, just show defaults. 
-             // First admin save will create the doc.
-             setSettings({ leagueName: 'My League', logoUrl: '', footerText: '' });
-        }
-    });
+    const unsubSettings = onSnapshot(collection(db, COLLECTIONS.SETTINGS), 
+        (snap) => {
+            if (!snap.empty) setSettings(snap.docs[0].data());
+        }, 
+        (error) => console.error("Settings Error:", error)
+    );
 
-    const unsubTeams = onSnapshot(collection(db, COLLECTIONS.TEAMS), (snap) => {
-      setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
+    const unsubTeams = onSnapshot(collection(db, COLLECTIONS.TEAMS), 
+        (snap) => {
+            setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            setIsTeamsLoading(false);
+        },
+        (error) => console.error("Teams Error:", error)
+    );
 
-    const unsubMatches = onSnapshot(collection(db, COLLECTIONS.MATCHES), (snap) => {
-      setMatches(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    });
+    const unsubMatches = onSnapshot(collection(db, COLLECTIONS.MATCHES), 
+        (snap) => {
+            setMatches(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            setIsMatchesLoading(false);
+        },
+        (error) => console.error("Matches Error:", error)
+    );
 
-    // Mock Visitor Stats (For now)
     setVisitorStats({
         today: Math.floor(Math.random() * 50) + 10, 
         month: Math.floor(Math.random() * 200) + 50, 
@@ -187,13 +166,12 @@ export default function App() {
 
   // --- Logic: Calculation ---
   const tableData = useMemo(() => {
+    if (isTeamsLoading) return [];
     const stats = {};
-    // Init Stats
     teams.forEach(team => {
       stats[team.id] = { ...team, played: 0, won: 0, draw: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0, form: [] };
     });
 
-    // Process Matches
     const sortedMatches = [...matches].sort((a, b) => (a.md - b.md));
     sortedMatches.forEach(match => {
       if (match.homeScore === undefined || match.awayScore === undefined) return;
@@ -218,7 +196,6 @@ export default function App() {
       }
     });
 
-    // Finalize
     Object.values(stats).forEach(team => {
       team.gd = team.gf - team.ga;
       team.form = team.form.slice(-5);
@@ -229,7 +206,7 @@ export default function App() {
       if (b.gd !== a.gd) return b.gd - a.gd;
       return b.gf - a.gf;
     });
-  }, [teams, matches]);
+  }, [teams, matches, isTeamsLoading]);
 
   const handleCopyTable = () => {
     const text = tableData.map((t, i) => `${i+1}. ${t.name} | P:${t.points}`).join('\n');
@@ -237,9 +214,6 @@ export default function App() {
     alert('คัดลอกแล้ว!');
   };
 
-  // --- View Routing ---
-  if (loading) return <div className="h-screen flex items-center justify-center bg-slate-100 font-chakra text-gray-500">กำลังโหลดข้อมูล...</div>;
-  
   if (activeTab === 'login') {
       return <Login onLogin={(success) => { 
           if(success) { setIsAdminMode(true); setActiveTab('table'); } 
@@ -250,7 +224,6 @@ export default function App() {
     return <AdminPanel teams={teams} matches={matches} settings={settings} onExit={() => { setIsAdminMode(false); setActiveTab('table'); }} />;
   }
 
-  // --- Main UI ---
   return (
     <div className="min-h-screen bg-gray-50 font-chakra text-gray-800 flex flex-col">
        {/* Header */}
@@ -258,18 +231,15 @@ export default function App() {
           <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
              <div className="flex items-center gap-3">
                 <img src={settings.logoUrl} className="w-10 h-10 rounded-full object-cover border bg-gray-100" onError={(e) => e.target.src = 'https://placehold.co/100x100?text=L'}/>
-                <h1 className="font-bold text-lg text-slate-800 truncate max-w-[180px] sm:max-w-xs">{settings.leagueName}</h1>
+                <h1 className="font-bold text-lg text-slate-800 truncate max-w-[180px] sm:max-w-xs">{settings.leagueName || 'League Manager'}</h1>
              </div>
              <nav className="hidden md:flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
                 <TabButton active={activeTab === 'table'} onClick={() => setActiveTab('table')} icon={<Trophy size={18} />} label="ตาราง" />
                 <TabButton active={activeTab === 'matches'} onClick={() => setActiveTab('matches')} icon={<Calendar size={18} />} label="ผลแข่ง" />
                 <TabButton active={activeTab === 'stats'} onClick={() => setActiveTab('stats')} icon={<Activity size={18} />} label="สถิติ" />
              </nav>
-             <button onClick={() => setActiveTab('login')} className="text-sm text-gray-500 hover:text-blue-600 font-medium px-3 py-2">
-                 Admin
-             </button>
+             <button onClick={() => setActiveTab('login')} className="text-sm text-gray-500 hover:text-blue-600 font-medium px-3 py-2">Admin</button>
           </div>
-          {/* Mobile Nav */}
           <div className="md:hidden border-t flex justify-around p-2 bg-white fixed bottom-0 left-0 right-0 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
              <TabButtonMobile active={activeTab === 'table'} onClick={() => setActiveTab('table')} icon={<Trophy size={20} />} label="ตาราง" />
              <TabButtonMobile active={activeTab === 'matches'} onClick={() => setActiveTab('matches')} icon={<Calendar size={20} />} label="ผลแข่ง" />
@@ -286,46 +256,52 @@ export default function App() {
                         <h2 className="font-bold text-lg flex items-center gap-2"><Trophy size={20} className="text-yellow-300" /> ตารางคะแนน</h2>
                         <button onClick={handleCopyTable} className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition"><Share2 size={18} /></button>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
-                                <tr>
-                                    <th className="px-4 py-3 text-center w-10">#</th>
-                                    <th className="px-4 py-3">ทีม</th>
-                                    <th className="px-2 py-3 text-center">แข่ง</th>
-                                    <th className="px-2 py-3 text-center hidden sm:table-cell">ได้/เสีย</th>
-                                    <th className="px-2 py-3 text-center">+/-</th>
-                                    <th className="px-4 py-3 text-center font-bold text-blue-700">แต้ม</th>
-                                    <th className="px-4 py-3 text-center hidden sm:table-cell">ฟอร์ม</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {tableData.length === 0 ? (
-                                    <tr><td colSpan="7" className="p-8 text-center text-gray-400">ไม่พบข้อมูล (เข้าสู่ระบบ Admin เพื่อเพิ่มทีมหรือดึงข้อมูลเก่า)</td></tr>
-                                ) : (
-                                    tableData.map((team, index) => (
-                                        <tr key={team.id} className="hover:bg-blue-50/50 transition duration-150">
-                                            <td className="px-4 py-3 text-center font-medium text-gray-400">{index + 1}</td>
-                                            <td className="px-4 py-3 flex items-center gap-3">
-                                                <img src={team.logo} className="w-8 h-8 rounded-full object-cover border bg-gray-100" onError={(e) => e.target.src = 'https://placehold.co/40?text=?'} />
-                                                <span className="font-semibold text-gray-800">{team.name}</span>
-                                            </td>
-                                            <td className="px-2 py-3 text-center">{team.played}</td>
-                                            <td className="px-2 py-3 text-center text-gray-500 text-xs hidden sm:table-cell">{team.gf}/{team.ga}</td>
-                                            <td className="px-2 py-3 text-center font-medium">{team.gd > 0 ? `+${team.gd}` : team.gd}</td>
-                                            <td className="px-4 py-3 text-center"><span className="inline-block w-8 h-8 leading-8 rounded-full bg-blue-100 text-blue-700 font-bold shadow-sm">{team.points}</span></td>
-                                            <td className="px-4 py-3 hidden sm:table-cell">
-                                                <div className="flex justify-center gap-1">
-                                                    {team.form.map((res, i) => (
-                                                        <span key={i} className={`w-2 h-2 rounded-full ${res === 'W' ? 'bg-green-500' : res === 'D' ? 'bg-gray-400' : 'bg-red-500'}`} />
-                                                    ))}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                    <div className="overflow-x-auto min-h-[200px]">
+                        {isTeamsLoading ? <LoadingState /> : (
+                            <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
+                                    <tr>
+                                        <th className="px-4 py-3 text-center w-10">อันดับ</th>
+                                        <th className="px-4 py-3">ทีม</th>
+                                        <th className="px-2 py-3 text-center">แข่ง</th>
+                                        <th className="px-2 py-3 text-center">ชนะ</th>
+                                        <th className="px-2 py-3 text-center">เสมอ</th>
+                                        <th className="px-2 py-3 text-center">แพ้</th>
+                                        <th className="px-2 py-3 text-center text-gray-600">ได้/เสีย</th>
+                                        <th className="px-4 py-3 text-center font-bold text-blue-700">คะแนน</th>
+                                        <th className="px-4 py-3 text-center hidden sm:table-cell">ฟอร์ม</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {tableData.length === 0 ? (
+                                        <tr><td colSpan="9" className="p-8 text-center text-gray-400">ไม่พบข้อมูล (กรุณาเข้าสู่ระบบ Admin เพื่อเพิ่มทีม หรือดึงข้อมูลเก่า)</td></tr>
+                                    ) : (
+                                        tableData.map((team, index) => (
+                                            <tr key={team.id} className="hover:bg-blue-50/50 transition duration-150">
+                                                <td className="px-4 py-3 text-center font-medium text-gray-400">{index + 1}</td>
+                                                <td className="px-4 py-3 flex items-center gap-3">
+                                                    <img src={team.logo} className="w-8 h-8 rounded-full object-cover border bg-gray-100" onError={(e) => e.target.src = 'https://placehold.co/40?text=?'} />
+                                                    <span className="font-semibold text-gray-800">{team.name}</span>
+                                                </td>
+                                                <td className="px-2 py-3 text-center">{team.played}</td>
+                                                <td className="px-2 py-3 text-center text-gray-600">{team.won}</td>
+                                                <td className="px-2 py-3 text-center text-gray-600">{team.draw}</td>
+                                                <td className="px-2 py-3 text-center text-gray-600">{team.lost}</td>
+                                                <td className="px-2 py-3 text-center text-gray-500 text-xs">{team.gf}/{team.ga}</td>
+                                                <td className="px-4 py-3 text-center"><span className="inline-block w-8 h-8 leading-8 rounded-full bg-blue-100 text-blue-700 font-bold shadow-sm">{team.points}</span></td>
+                                                <td className="px-4 py-3 hidden sm:table-cell">
+                                                    <div className="flex justify-center gap-1">
+                                                        {team.form.map((res, i) => (
+                                                            <span key={i} className={`w-2 h-2 rounded-full ${res === 'W' ? 'bg-green-500' : res === 'D' ? 'bg-gray-400' : 'bg-red-500'}`} />
+                                                        ))}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 </div>
             </div>
@@ -333,7 +309,7 @@ export default function App() {
 
           {activeTab === 'matches' && (
              <div className="space-y-4 animate-fade-in">
-                 {matches.length === 0 ? (
+                 {isMatchesLoading ? <LoadingState /> : matches.length === 0 ? (
                      <div className="text-center p-10 bg-white rounded-xl border border-dashed border-gray-300 text-gray-500">ยังไม่มีข้อมูลการแข่งขัน</div>
                  ) : (
                      Object.entries(matches.reduce((acc, m) => { (acc[m.md] = acc[m.md] || []).push(m); return acc; }, {}))
@@ -401,7 +377,6 @@ export default function App() {
   );
 }
 
-// --- Sub Components ---
 const TabButton = ({ active, onClick, icon, label }) => (
     <button onClick={onClick} className={`flex items-center gap-2 px-4 py-2 rounded-md transition text-sm font-medium ${active ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:bg-gray-200'}`}>{icon} {label}</button>
 );
@@ -423,16 +398,12 @@ const AdminPanel = ({ teams, matches, settings, onExit }) => {
     const [migrating, setMigrating] = useState(false);
     const [migrationMsg, setMigrationMsg] = useState('');
 
-    // --- MIGRATION LOGIC (Using RTDB) ---
     const handleMigrate = async () => {
         if (!confirm("ยืนยันการดึงข้อมูลจากระบบเก่า? (ข้อมูลปัจจุบันในระบบใหม่จะถูกแทนที่)")) return;
         setMigrating(true);
         setMigrationMsg('กำลังเชื่อมต่อฐานข้อมูลเก่า...');
 
         try {
-            // ใช้ Config เดิมได้เลยเพราะอยู่ในโปรเจกต์เดียวกัน แต่ต้อง initialize ใหม่เพื่อใช้ RTDB SDK
-            // หากมี app ชื่อ 'oldApp' อยู่แล้วให้ใช้ตัวเดิม ถ้าไม่มีให้สร้างใหม่
-            // แต่ในที่นี้เราใช้ `getDatabase(app)` ได้เลยถ้า config เดียวกันมี databaseURL อยู่แล้ว
             const rtdb = getDatabase(app); 
             
             setMigrationMsg('กำลังโหลดข้อมูลจาก Realtime Database...');
@@ -444,7 +415,13 @@ const AdminPanel = ({ teams, matches, settings, onExit }) => {
             const oldMatches = matchesSnap.val() || {};
             const oldSettings = settingsSnap.val() || {};
 
-            setMigrationMsg('กำลังบันทึกสู่ Firestore...');
+            if (Object.keys(oldTeams).length === 0 && Object.keys(oldMatches).length === 0) {
+                setMigrationMsg('ไม่พบข้อมูลในระบบเก่า (Realtime Database ว่างเปล่า)');
+                alert('ไม่พบข้อมูลในระบบเก่า!');
+                return;
+            }
+
+            setMigrationMsg(`พบทีม: ${Object.keys(oldTeams).length}, แมตช์: ${Object.keys(oldMatches).length} ...กำลังบันทึก`);
             const batch = writeBatch(db);
 
             // Teams
@@ -471,7 +448,6 @@ const AdminPanel = ({ teams, matches, settings, onExit }) => {
             // Settings
             if (oldSettings.leagueName) {
                  const settingsRef = doc(collection(db, COLLECTIONS.SETTINGS));
-                 // Create new settings doc (or you could query for existing to update)
                  batch.set(settingsRef, {
                      leagueName: oldSettings.leagueName,
                      logoUrl: oldSettings.logoUrl || '',
@@ -481,12 +457,17 @@ const AdminPanel = ({ teams, matches, settings, onExit }) => {
             }
 
             await batch.commit();
-            alert("ย้ายข้อมูลสำเร็จ! กรุณารีเฟรชหน้าจอ");
-            window.location.reload();
-
+            setMigrationMsg('ย้ายข้อมูลสำเร็จ! ข้อมูลจะปรากฏที่หน้าจอทันที');
+            alert("ย้ายข้อมูลสำเร็จ! ข้อมูลจะปรากฏที่หน้าจอทันที (ไม่ต้องรีเฟรช)");
+            
         } catch (error) {
             console.error(error);
             setMigrationMsg('เกิดข้อผิดพลาด: ' + error.message);
+            if (error.code === 'permission-denied') {
+                alert('เกิดข้อผิดพลาด: ไม่มีสิทธิ์เขียนข้อมูล (Permission Denied). กรุณาตรวจสอบ Firestore Rules');
+            } else {
+                alert('เกิดข้อผิดพลาด: ' + error.message);
+            }
         } finally {
             setMigrating(false);
         }
@@ -574,9 +555,27 @@ const AdminPanel = ({ teams, matches, settings, onExit }) => {
                     <div className="space-y-6">
                         <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl">
                             <h3 className="font-bold text-blue-800 text-lg mb-2 flex items-center gap-2"><Database /> ดึงข้อมูลเก่า (Migration Tool)</h3>
-                            <p className="text-sm text-blue-600 mb-4">ดึงข้อมูลจาก Realtime Database มายัง Firestore (ทำครั้งเดียวเมื่อเริ่มระบบ)</p>
-                            <button onClick={handleMigrate} disabled={migrating} className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold shadow-lg flex items-center gap-2 disabled:opacity-50">{migrating ? <RefreshCw className="animate-spin"/> : <RefreshCw />} {migrating ? 'กำลังย้าย...' : 'เริ่มย้ายข้อมูลทันที'}</button>
-                            {migrationMsg && <p className="mt-3 text-sm bg-white p-2 rounded border">{migrationMsg}</p>}
+                            <p className="text-sm text-blue-600 mb-4">
+                                หากกดแล้วข้อมูลขึ้นมา แต่หายไปเมื่อกด F5 <br/> 
+                                แสดงว่า Server อาจจะยังไม่ได้รับข้อมูล (Network ช้า) <br/> 
+                                หรือติดสิทธิ์ (Permission)
+                            </p>
+                            
+                            {migrationMsg && (
+                                <div className={`mb-4 p-3 rounded border flex items-start gap-2 text-sm ${migrationMsg.includes('Error') ? 'bg-red-50 text-red-700 border-red-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                                   <AlertCircle size={16} className="mt-0.5 flex-shrink-0"/> 
+                                   <span>{migrationMsg}</span>
+                                </div>
+                            )}
+
+                            <button 
+                                onClick={handleMigrate} 
+                                disabled={migrating} 
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg flex items-center gap-2 disabled:opacity-50 transition"
+                            >
+                                {migrating ? <RefreshCw className="animate-spin"/> : <RefreshCw />} 
+                                {migrating ? 'กำลังย้ายข้อมูล...' : 'เริ่มย้ายข้อมูลทันที (ไม่ต้องรีเฟรช)'}
+                            </button>
                         </div>
                     </div>
                 )}
